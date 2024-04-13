@@ -37,6 +37,7 @@ async fn main() {
             commands::test(),
             commands::link(),
             commands::query(),
+            commands::games(),
         ],
         prefix_options: PrefixFrameworkOptions {
             prefix: Some("&".into()),

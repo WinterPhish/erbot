@@ -4,8 +4,8 @@ pub const DB_NAME: &str = "accounts.sqlite";
 
 #[derive(Debug)]
 pub struct AccountLink {
-    er_id: String,
-    discord_id: String,
+    pub er_id: String,
+    pub discord_id: String,
 }
 
 pub fn init_database() -> Result<()> {
@@ -20,49 +20,53 @@ pub fn init_database() -> Result<()> {
     Ok(())
 }
 
-pub async fn add_data(discord_id: String, er_id: String) -> Result<()> {
+pub async fn add_data(discord_id: String, er_id: String) -> Result<(), rusqlite::Error> {
     let conn = Connection::open(DB_NAME).unwrap();
 
-    conn.execute(
+    match conn.execute(
         "INSERT INTO LinkedAccounts (discord_id, er_id) VALUES (?1, ?2)",
         (discord_id, er_id),
-    )?;
-
-    Ok(())
+    ) {
+        Ok(updated) => {
+            println!("{} rows were updated", updated);
+            Ok(())
+        }
+        Err(err) => {
+            println!("Error: {}", err);
+            Err(err)
+        }
+    }
 }
 
-pub async fn query_discord_id(discord_id: String) -> Result<()> {
+pub async fn query_discord_id(discord_id: String) -> Result<AccountLink> {
     let conn = Connection::open(DB_NAME).unwrap();
 
     let mut q = conn
         .prepare("SELECT discord_id, er_id FROM LinkedAccounts WHERE discord_id =:discord_id;")?;
-    let acc_iter = q.query_map(&[(":discord_id", discord_id.to_string().as_str())], |row| {
+    let mut acc_iter = q.query_map(&[(":discord_id", discord_id.to_string().as_str())], |row| {
         Ok(AccountLink {
             discord_id: row.get(0)?,
             er_id: row.get(1)?,
         })
     })?;
 
-    for account in acc_iter {
-        println!("Found acc {:?}", account.unwrap());
-    }
+    let account = acc_iter.next().unwrap()?;
 
-    Ok(())
+    Ok(account)
 }
 
-pub async fn query_er_id(er_id: String) -> Result<()> {
+pub async fn query_er_id(er_id: String) -> Result<AccountLink> {
     let conn = Connection::open(DB_NAME).unwrap();
     let mut q =
         conn.prepare("SELECT discord_id, er_id FROM LinkedAccounts WHERE er_id =:er_id;")?;
-    let acc_iter = q.query_map(&[(":er_id", er_id.to_string().as_str())], |row| {
+    let mut acc_iter = q.query_map(&[(":er_id", er_id.to_string().as_str())], |row| {
         Ok(AccountLink {
             discord_id: row.get(0)?,
             er_id: row.get(1)?,
         })
     })?;
 
-    for account in acc_iter {
-        println!("Found acc {:?}", account.unwrap());
-    }
-    Ok(())
+    let account = acc_iter.next().unwrap()?;
+
+    Ok(account)
 }

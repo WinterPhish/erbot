@@ -1,4 +1,6 @@
-use crate::{api, database, Context, Error};
+use crate::{
+    api, api::CharacterStats, api::Nickname, api::Stats, api::UserStats, database, Context, Error,
+};
 
 #[poise::command(prefix_command, track_edits, slash_command)]
 pub async fn help(
@@ -24,8 +26,8 @@ pub async fn test(
     ctx: Context<'_>,
     #[description = "Username"] username: String,
 ) -> Result<(), Error> {
-    let response = api::get_userid(username).await?;
-    ctx.say(response.to_string()).await?;
+    let response: Nickname = api::get_userid(username).await?;
+    ctx.say(response.user.userNum.to_string()).await?;
     Ok(())
 }
 
@@ -34,8 +36,17 @@ pub async fn link(
     ctx: Context<'_>,
     #[description = "ID of account to link to discord account"] er_id: String,
 ) -> Result<(), Error> {
-    database::add_data(ctx.author().id.to_string(), er_id).await?;
-    ctx.say("uhhh uhmmmm").await?;
+    match database::add_data(ctx.author().id.to_string(), er_id).await {
+        Ok(()) => {
+            ctx.say("Uhhh uhmmm").await?;
+            return Ok(());
+        }
+        Err(err) => {
+            ctx.say("Account already linked: test").await?;
+            return Ok(());
+        }
+    }
+    ctx.say("Completed").await?;
     Ok(())
 }
 
@@ -54,8 +65,8 @@ pub async fn discord(
     ctx: Context<'_>,
     #[description = "Discord ID to find"] discord_id: String,
 ) -> Result<(), Error> {
-    let accounts = database::query_discord_id(discord_id).await?;
-    ctx.say("wuh").await?;
+    let account = database::query_discord_id(discord_id).await?;
+    ctx.say(account.er_id).await?;
     Ok(())
 }
 
@@ -64,7 +75,18 @@ pub async fn er(
     ctx: Context<'_>,
     #[description = "Eternal Return ID to find"] er_id: String,
 ) -> Result<(), Error> {
-    let accounts = database::query_er_id(er_id).await?;
-    ctx.say("uh wuh").await?;
+    let account = database::query_er_id(er_id).await?;
+    ctx.say(account.discord_id).await?;
+    Ok(())
+}
+
+#[poise::command(prefix_command, slash_command)]
+pub async fn games(
+    ctx: Context<'_>,
+    #[description = "Account"] account: String,
+    #[description = "Season (0 = Unranked)"] season: String,
+) -> Result<(), Error> {
+    let response: UserStats = api::get_user_stats(account, season).await?;
+    ctx.say(response.userStats[0].totalWins.to_string()).await?;
     Ok(())
 }
