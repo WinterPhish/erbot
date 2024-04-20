@@ -53,7 +53,7 @@ pub struct Stats {
     pub characterStats: Vec<CharacterStats>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CharacterStats {
     pub characterCode: u8,
     pub totalGames: u8,
@@ -63,6 +63,16 @@ pub struct CharacterStats {
     pub wins: u8,
     pub top3Rate: f32,
     pub averageRank: u8,
+}
+
+pub async fn get_lang(language: String) -> Result<String, ureq::Error> {
+    let link: String = format!("{}{}{}", WEBSITE, "/v1/l10n/", language);
+    let res: serde_json::Value = ureq::get(&link)
+        .set("x-api-key", password())
+        .call()?
+        .into_json()?;
+    let data = res["data"]["l10nPath"].to_string();
+    Ok(data)
 }
 
 pub async fn get_userid(username: String) -> Result<Nickname, ureq::Error> {

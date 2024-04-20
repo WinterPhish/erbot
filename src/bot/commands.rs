@@ -1,6 +1,10 @@
 use crate::{
-    api, api::CharacterStats, api::Nickname, api::Stats, api::UserStats, database, Context, Error,
+    api::{self, CharacterStats, Nickname, UserStats},
+    database,
+    util::paginate_embeds,
+    Context, Error,
 };
+use poise::serenity_prelude::builder::CreateEmbed;
 
 #[poise::command(prefix_command, track_edits, slash_command)]
 pub async fn help(
@@ -41,13 +45,11 @@ pub async fn link(
             ctx.say("Uhhh uhmmm").await?;
             return Ok(());
         }
-        Err(err) => {
+        Err(_err) => {
             ctx.say("Account already linked: test").await?;
             return Ok(());
         }
     }
-    ctx.say("Completed").await?;
-    Ok(())
 }
 
 #[poise::command(
@@ -87,6 +89,15 @@ pub async fn games(
     #[description = "Season (0 = Unranked)"] season: String,
 ) -> Result<(), Error> {
     let response: UserStats = api::get_user_stats(account, season).await?;
-    ctx.say(response.userStats[0].totalWins.to_string()).await?;
+    let mut embeds: Vec<CreateEmbed> = vec![];
+    for char in
+        <Vec<CharacterStats> as Clone>::clone(&response.userStats[0].characterStats).into_iter()
+    {
+        let embed = CreateEmbed::new()
+            .title(char.characterCode.to_string())
+            .description(char.totalGames.to_string());
+        embeds.push(embed);
+    }
+    paginate_embeds(ctx, embeds).await?;
     Ok(())
 }
